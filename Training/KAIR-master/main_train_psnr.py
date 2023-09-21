@@ -1,8 +1,11 @@
+import copy
 import os.path
 import math
 import argparse
 import time
 import random
+
+import matplotlib.pyplot as plt
 import numpy as np
 from collections import OrderedDict
 import logging
@@ -107,7 +110,7 @@ def main(json_path='options/train_msrresnet_psnr.json'):
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
 
-    wandb.init(project=f"SwinIR_{opt['task']}_x{opt['scale']}_{os.path.basename(opt['datasets']['train']['dataroot_H'])}_{os.path.basename(opt['datasets']['train']['dataroot_L'])}", config=opt)
+    wandb.init(project=f"SwinIR_{opt['task']}_x{opt['scale']}_{os.path.basename(opt['datasets']['train']['dataroot_H'])}_{os.path.basename(opt['datasets']['train']['dataroot_L']) if opt['scale'] != 1 else 'DN'}", config=opt)
     wandb.log({"dataset": opt['datasets']['train']['dataroot_H']})
 
 
@@ -225,41 +228,185 @@ def main(json_path='options/train_msrresnet_psnr.json'):
                 avg_psnr = 0.0
                 idx = 0
 
-                for test_data in test_loader:
-                    idx += 1
-                    image_name_ext = os.path.basename(test_data['L_path'][0])
-                    img_name, ext = os.path.splitext(image_name_ext)
-
-                    img_dir = os.path.join(opt['path']['images'], img_name)
-                    util.mkdir(img_dir)
-
-                    model.feed_data(test_data)
-                    model.test()
-
-                    visuals = model.current_visuals()
-                    E_img = util.tensor2uint(visuals['E'])
-                    H_img = util.tensor2uint(visuals['H'])
-
-                   # print("E: ", E_img.shape)
-                   # print("H: ", H_img.shape)
+                stat_fld = os.path.join(os.path.dirname(opt['path']['images']), 'stats')
+                os.makedirs(stat_fld, exist_ok=True)
+                statfile = os.path.join(stat_fld,  '{:d}.csv'.format(current_step))
 
 
-                    # -----------------------
-                    # save estimated image E
-                    # -----------------------
-                    save_img_path = os.path.join(img_dir, '{:s}_{:d}.png'.format(img_name, current_step))
-                    util.imsave(E_img, save_img_path)
+                with open(statfile, 'w') as f:
 
-                    # -----------------------
-                    # calculate PSNR
-                    # -----------------------
-                    current_psnr = util.calculate_psnr(E_img, H_img, border=border)
+                    f.write(f"Img;PSNR;SSIM;MSE\n")
+
+                    for test_data in test_loader:
+                        idx += 1
+                        image_name_ext = os.path.basename(test_data['L_path'][0])
+                        img_name, ext = os.path.splitext(image_name_ext)
+
+                        img_dir = os.path.join(opt['path']['images'], img_name)
+                        util.mkdir(img_dir)
+
+                        model.feed_data(test_data)
+                        model.test()
+
+                        visuals = model.current_visuals()
+                        E_img = util.tensor2uint(visuals['E'])
+                        H_img = util.tensor2uint(visuals['H'])
+
+                        L_img = util.tensor2uint(visuals['L'])
 
 
-                    logger.info('{:->4d}--> {:>10s} | {:<4.2f}dB'.format(idx, image_name_ext, current_psnr))
+                        E_fl = copy.deepcopy(E_img)
+                        H_fl = copy.deepcopy(H_img)
+                        L_fl = copy.deepcopy(L_img)
+                        E_fl = E_fl.astype(float)
+                        H_fl = H_fl.astype(float)
+                        L_fl = L_fl.astype(float)
+                        diff = E_fl - H_fl
 
-                    avg_psnr += current_psnr
+                        res_fld = os.path.join(img_dir, 'residual')
+                        comp_fld = os.path.join(img_dir, 'comp')
+                        os.makedirs(res_fld, exist_ok=True)
+                        os.makedirs(comp_fld, exist_ok=True)
 
+
+
+
+                       # print("E: ", E_img.shape)
+                       # print("H: ", H_img.shape)
+
+
+                        # -----------------------
+                        # save estimated image E
+                        # -----------------------
+                        save_img_path = os.path.join(img_dir, '{:s}_{:d}.png'.format(img_name, current_step))
+                        util.imsave(E_img, save_img_path)
+
+                        # -----------------------
+                        # calculate PSNR
+                        # -----------------------
+                        current_psnr = util.calculate_psnr(E_img, H_img, border=border)
+                        ssim = util.calculate_ssim(E_img, H_img, border=border)
+                        mse = util.calculate_mse(E_img, H_img, border=border)
+                        f.write(f"{img_name};{current_psnr};{ssim};{mse}\n")
+
+
+
+                        logger.info('{:->4d}--> {:>10s} | {:<4.2f}dB'.format(idx, image_name_ext, current_psnr))
+
+                        plt.clf()
+                        plt.imshow(diff, cmap='seismic')
+                        plt.colorbar()
+                        plt.title(f"PSNR: {current_psnr:.3f}dB")
+                        plt.savefig(os.path.join(res_fld, '{:s}_{:d}.png'.format(img_name, current_step)))
+                        plt.clf()
+
+
+
+
+                        # fig, axs = plt.subplots(2, 2)
+    #
+                        # axs[0, 0].imshow(L_fl, cmap='gray', vmax=255, vmin=0)
+                        # axs[0, 0].set_title("L")
+                        # axs[0, 0].axis('off')
+                        # axs[0, 1].imshow(E_fl, cmap='gray', vmax=255, vmin=0)
+                        # axs[0, 1].set_title("E")
+                        # axs[0, 1].axis('off')
+                        # axs[1, 0].imshow(H_fl, cmap='gray', vmax=255, vmin=0)
+                        # axs[1, 0].set_title("H")
+                        # axs[1, 0].axis('off')
+                        # axs[1, 1].imshow(diff, cmap='seismic')
+                        # axs[1, 1].set_title("diff")
+                        # axs[1, 1].axis('off')
+                        # plt.title(f"PSNR: {current_psnr:.3f}dB")
+                        # plt.savefig(os.path.join(comp_fld, '{:s}_{:d}.png'.format(img_name, current_step)))
+                        # plt.clf()
+                        mind = 0
+                        maxd = 0
+                        for i in range(3):
+                            if i == 0:
+                                ls = L_fl
+                            elif i == 1:
+                                ls = E_fl
+                            else:
+                                ls = H_fl
+
+                            for j in range(3):
+                                if j == 0:
+                                    rs = L_fl
+                                elif j == 1:
+                                    rs = E_fl
+                                else:
+                                    rs = H_fl
+
+                            diff = rs - ls
+                            if np.amin(diff) < mind:
+                                mind = np.amin(diff)
+                            if np.amax(diff) > maxd:
+                                maxd = np.amax(diff)
+
+                            mind = min(mind, -maxd)
+                            maxd = -mind
+
+
+                        fig, axs = plt.subplots(3, 3)
+
+                        for i in range(3):
+                            if i == 0:
+                                ls = L_fl
+                            elif i == 1:
+                                ls = E_fl
+                            else:
+                                ls = H_fl
+
+                            for j in [2, 1, 0]:
+                                if j == 0:
+                                    rs = L_fl
+                                elif j == 1:
+                                    rs = E_fl
+                                else:
+                                    rs = H_fl
+
+
+
+                                if i == j:
+                                    axs[i, j].imshow(ls, cmap='gray', vmin=0, vmax=255)
+
+                                else:
+                                    diff = ls - rs
+                                    pcm = axs[i, j].imshow(diff, cmap='seismic', vmin=mind, vmax=maxd)
+                                    # if i == 1 and j == 2:
+                                    #     fig.colorbar(pcm, ax=axs[i, j], shrink=3.0)
+                                    # if j == 2 and i != 1:
+                                    #     fig.colorbar(pcm, ax=axs[i, j], shrink=0.01)
+
+
+                                axs[i, j].axis('off')
+                                if i == 0:
+                                    if j == 0:
+                                        axs[i, j].set_title("L")
+                                    elif j == 1:
+                                        axs[i, j].set_title("E")
+                                    else:
+                                        axs[i, j].set_title("H")
+
+                                if j == 0:
+                                    if i == 0:
+                                        axs[i, j].set_xlabel("L")
+                                    elif i == 1:
+                                        axs[i, j].set_xlabel("E")
+                                    else:
+                                        axs[i, j].set_xlabel("H")
+
+                        # fig.colorbar(pcm, ax=[axs[0, 1], axs[0, 2], axs[1, 0], axs[2, 0], axs[2, 1], axs[1, 2]])
+                        # fig.colorbar(ax=axs)
+                        fig.colorbar(pcm, ax=axs.ravel().tolist())
+                        plt.suptitle(f"PSNR: {current_psnr:.3f}dB, MSE: {mse:.3f}, SSIM: {ssim:.3f}")
+                        plt.savefig(os.path.join(comp_fld, '{:s}_{:d}.png'.format(img_name, current_step)))
+                        plt.clf()
+                        avg_psnr += current_psnr
+
+
+                combine_stats(stat_fld)
                 avg_psnr = avg_psnr / idx
 
                 wandb.log({'V-E-Img': E_img, 'V-H-Img': H_img, 'PSNR': avg_psnr})
@@ -267,6 +414,61 @@ def main(json_path='options/train_msrresnet_psnr.json'):
                 # testing log
                 logger.info('<epoch:{:3d}, iter:{:8,d}, Average PSNR : {:<.2f}dB\n'.format(epoch, current_step, avg_psnr))
 
+
+def combine_stats(fld):
+    d = {}
+    keys = []
+    for file in os.listdir(fld):
+        step = int(file.split('.')[0])
+        keys.append(step)
+        with open(os.path.join(fld, file)) as f:
+            num = 0
+            mse = 0
+            ssim = 0
+            psnr = 0
+            for line in f:
+                if "PSNR" in line:
+                    continue
+                num += 1
+                parts = line.split(';')
+                psnr += float(parts[1])
+                ssim += float(parts[2])
+                mse += float(parts[3])
+            psnr /= num
+            ssim /= num
+            mse /= num
+            d[step] = (psnr, ssim, mse)
+
+    steps = []
+    psnrs = []
+    ssims = []
+    mses = []
+    with open(os.path.join(os.path.dirname(fld), 'stats.csv'), 'w') as f:
+        f.write("Step;PSNR;SSIM;MSE\n")
+        for key in sorted(keys):
+            steps.append(key)
+            psnrs.append(d[key][0])
+            ssims.append(d[key][1])
+            mses.append(d[key][2])
+            f.write(f"{key};{d[key][0]};{d[key][1]};{d[key][2]}\n")
+
+    plt.plot(steps, psnrs)
+    plt.title("PSNR")
+    plt.savefig(os.path.join(os.path.dirname(fld), 'psnr.png'))
+    plt.clf()
+    plt.plot(steps, ssims)
+    plt.title("SSIM")
+    plt.savefig(os.path.join(os.path.dirname(fld), 'ssim.png'))
+    plt.clf()
+    plt.plot(steps, mses)
+    plt.title("MSE")
+    plt.savefig(os.path.join(os.path.dirname(fld), 'mse.png'))
+    plt.clf()
+
+
+
 if __name__ == '__main__':
     json_path = "options/swinir/train_swinir_sr_classical.json"
+    # json_path = "options/swinir/train_swinir_denoising_gray.json"
+
     main(json_path)

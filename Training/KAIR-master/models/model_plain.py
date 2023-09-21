@@ -38,7 +38,7 @@ class ModelPlain(ModelBase):
     # initialize training
     # ----------------------------------------
     def init_train(self):
-        # self.load()                           # load model
+        self.load()                           # load model
         self.netG.train()                     # set training mode,for BN
         self.define_loss()                    # define loss
         self.define_optimizer()               # define optimizer
@@ -125,9 +125,9 @@ class ModelPlain(ModelBase):
         import matplotlib.pyplot as plt
         fig, axs = plt.subplots(3, 3)
         for i in range(3):
-            axs[i, 0].imshow(self.L[i, 0, :, :].detach().cpu().numpy(), cmap="gray")
-            axs[i, 1].imshow(self.E[i, 0, :, :].detach().cpu().numpy(), cmap="gray")
-            axs[i, 2].imshow(self.H[i, 0, :, :].detach().cpu().numpy(), cmap="gray")
+            axs[i, 0].imshow(self.L[i, 0, :, :].detach().cpu().numpy(), cmap="gray", vmax=1, vmin=0)
+            axs[i, 1].imshow(self.E[i, 0, :, :].detach().cpu().numpy(), cmap="gray", vmax=1, vmin=0)
+            axs[i, 2].imshow(self.H[i, 0, :, :].detach().cpu().numpy(), cmap="gray", vmax=1, vmin=0)
         plt.savefig(os.path.join(os.path.dirname(self.save_dir), 'imgs', f"Epoch{epoch}.png"), dpi=600)
         plt.cla()
         # print("Saved ", os.path.join(os.path.dirname(self.save_dir), 'imgs', f"Epoch{epoch}.png"))

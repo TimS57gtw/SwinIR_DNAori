@@ -1,8 +1,8 @@
 {
-  "task": "swinir_denoising_gray_15"     //  grayscale Gaussian denoising for noise level 15/25/50. root/task/images-models-options
+  "task": "swinir_denoising_gray_50"     //  grayscale Gaussian denoising for noise level 15/25/50. root/task/images-models-options
   , "model": "plain" // "plain" | "plain2" if two inputs
   , "gpu_ids": [0,1,2,3,4,5,6,7]
-  , "dist": true
+  , "dist": false
 
   , "n_channels": 1  // broadcast to "datasets", 1 for grayscale, 3 for color
 
@@ -16,25 +16,25 @@
     "train": {
       "name": "train_dataset"           // just name
       , "dataset_type": "dncnn"         // "dncnn" | "dnpatch" | "fdncnn" | "ffdnet" | "sr" | "srmd" | "dpsr" | "plain" | "plainpatch" | "jpeg"
-      , "dataroot_H": "trainsets/trainH"// path of H training dataset. DIV2K (800 training images) + Flickr2K (2650 images) + BSD500 (400 training&testing images) + WED(4744 images) in SwinIR
+      , "dataroot_H": "C:/Users/seifert/PycharmProjects/SwinIR/TrainData/Molecule2/LR_N" // path of H training dataset. DIV2K (800 training images) + Flickr2K (2650 images) + BSD500 (400 training&testing images) + WED(4744 images) in SwinIR
       , "dataroot_L": null              // path of L training dataset
 
-      , "H_size": 128                   // patch_size
-      , "sigma": 15                     //  15 | 25 | 50.
-      , "sigma_test": 15                //
+      , "H_size": 32                   // patch_size
+      , "sigma": 50                     //  15 | 25 | 50.
+      , "sigma_test": 50                //
 
       , "dataloader_shuffle": true
-      , "dataloader_num_workers": 16
-      , "dataloader_batch_size": 8      // batch size 1 | 16 | 32 | 48 | 64 | 128. Total batch size =1x8=8 in SwinIR
+      , "dataloader_num_workers": 4
+      , "dataloader_batch_size": 16      // batch size 1 | 16 | 32 | 48 | 64 | 128. Total batch size =1x8=8 in SwinIR
     }
     , "test": {
       "name": "test_dataset"            // just name
       , "dataset_type": "dncnn"         // "dncnn" | "dnpatch" | "fdncnn" | "ffdnet" | "sr" | "srmd" | "dpsr" | "plain" | "plainpatch" | "jpeg"
-      , "dataroot_H": "testsets/set12"  // path of H testing dataset
+      , "dataroot_H": "C:/Users/seifert/PycharmProjects/SwinIR/TrainData/Molecule2/LR_Test"  // path of H testing dataset
       , "dataroot_L": null              // path of L testing dataset
 
-      , "sigma": 15                     // 
-      , "sigma_test": 15                // 
+      , "sigma": 50                     //
+      , "sigma_test": 50                //
 
     }
   }
@@ -43,7 +43,7 @@
     "net_type": "swinir" 
     , "upscale": 1 
     , "in_chans": 1 
-    , "img_size": 128 
+    , "img_size": 32
     , "window_size": 8  
     , "img_range": 1.0 
     , "depths": [6, 6, 6, 6, 6, 6] 
