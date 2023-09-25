@@ -293,6 +293,7 @@ def read_spm(file, resultf):
 def apply_sr(model, infld, outfld, scale):
     print("Apply SR", model, infld, outfld, scale)
     denoise_set(infld=infld, outfld=outfld, model=model, do_preprocess=False, fraction=scale, save_sxm=False)
+    print("ASR Return")
 
 def prepare_for_yolo(filefolders, tempfolder, resultfolder, sr_model, sr_folder, sr_scale, save_pp_of=None, sample_png=None):
     """
@@ -745,7 +746,7 @@ def preprocess_origami(tempfolder, resf_npy, resf_png, threads, img_size=128, sk
     return pp_origami_args
 
 
-def get_semantic_seg(model, folder, resf, threshold=0.3, bilinear=False, oldModel=None):
+def get_semantic_seg(model, folder, resf, threshold=0.3, bilinear=False, oldModel=None, skip_pp=False):
     """
     Perform Semantic Segementation of markers
     :param model: model for prediction
@@ -761,11 +762,18 @@ def get_semantic_seg(model, folder, resf, threshold=0.3, bilinear=False, oldMode
     net.load_state_dict(torch.load(model_path, map_location=DEVICE))
     model = net.to(device=DEVICE)
 
+
+    print("provided npys:", folder)
+    for elem in os.listdir(folder):
+        arr = np.load(os.path.join(folder, elem), allow_pickle=True)
+        plt.imshow(arr)
+        plt.show()
+
     evaluate_real(model=model, device=None, folder=folder_non_pt, folder_pt=folder_pt,
                   folder_results=resf, label_folder=None, save_pret=None, line_corr=None,
                   do_flatten=None, do_flatten_border=None,
                   enhance_contrast=None, flip=None, threshold=threshold, flatten_line_90=None,
-                  workers=0, old_model=OLD_MODEL if oldModel is None else oldModel)
+                  workers=0, old_model=OLD_MODEL if oldModel is None else oldModel, skip_pp=skip_pp)
 
 
 def get_distances(images, gsc_labels, resf, fit_params, threads=6, export_hists=False, pp_img_folder=None,
@@ -780,9 +788,15 @@ def get_distances(images, gsc_labels, resf, fit_params, threads=6, export_hists=
     save_folder = resf
     accuracy = None
     transpose = False
-    distances, thetas = evaluate_ss(image_folder, label_folder, save_folder, threads, accuracy, show_all=eval_ss_SHOWALL,
+    es =  evaluate_ss(image_folder, label_folder, save_folder, threads, accuracy, show_all=eval_ss_SHOWALL,
                                     verbose=False, transpose=transpose, fit_params_folder=fit_params,
                                     export_hists=export_hists, pp_img_folder=pp_img_folder)
+    # print(es)
+    try:
+        distances, thetas = es
+    except TypeError:
+        print("cannot unpack ", es)
+        return [], []
     return distances, thetas
 
 
@@ -3589,10 +3603,10 @@ def evaluate_dataset_xy_allargs(**kwargs):
     pp_origami_args = preprocess_origami(all_crop_origami, pp_crop_origami_npy, pp_crop_origami_png, threads=threads,
                                          img_size=IMAGE_SIZE)
 
-    if yolo_sr is not None:
+    if ss_sr is not None:
         apply_sr(ss_sr, pp_crop_origami_npy, ss_denoise, scale=ss_sr_scale)
-
-        pp_crop_origami_npy = os.path.join(ss_denoise, "PNGs", "mix_npy")
+        print("SS_SR")
+        pp_crop_origami_npy = os.path.join(ss_denoise, "PNGs", "npy_mix")
 
 
 
@@ -3601,7 +3615,7 @@ def evaluate_dataset_xy_allargs(**kwargs):
     if MANUAL_SEG:
         manual_segmentation(all_crop_origami, ss_labels, IMAGE_SIZE, MS_FOLDER)
     else:
-        get_semantic_seg(ss_model, pp_crop_origami_npy, ss_results, threshold=ss_thrsh, bilinear=bilinear_model)
+        get_semantic_seg(ss_model, pp_crop_origami_npy, ss_results, threshold=ss_thrsh, bilinear=bilinear_model, skip_pp=ss_sr is None)
 
     # 7. get Distances from Images + SS Masks
         extract_gsc_ss(ss_results, ss_labels)
@@ -3613,6 +3627,7 @@ def evaluate_dataset_xy_allargs(**kwargs):
 
     used_labels = ss_labels if use_UNet else sample_labels_provided_resc
 
+    print("used Labels: ", used_labels)
 
     distances, thetas = get_distances(all_crop_origami_resc, used_labels, distance_results_all, fit_parameter_folder,
                                       threads=THREADS, export_hists=None,
@@ -3867,9 +3882,11 @@ if __name__ == "__main__":
            ]
 
     yolo_sr = r'D:\seifert\PycharmProjects\SwinDNA\swinir_sr_classical_patch64_x1_SampleLONG\models\70000_G.pth'
-    ss_sr = r'D:\seifert\PycharmProjects\SwinDNA\swinir_sr_classical_patch64_x1_MoleculeLONG\models\200000_G.pth'
+    ss_sr =  r'D:\seifert\PycharmProjects\SwinDNA\swinir_sr_classical_patch64_x1_MoleculeLONG\models\200000_G.pth'
+    yolo_sr = None
 
-    for ds in dss:
+    # ds = r'D:\seifert\PycharmProjects\DNAmeasurement\datasets\CF6'
+    for scale in [0, 0.2, 0.4, 0.6, 0.8, 1][::-1]:
         fld = r'D:\seifert\PycharmProjects\DNAmeasurement\SR\SwinIR_Include'
         os.makedirs(fld, exist_ok=True)
         res = os.path.join(fld, f"{len(os.listdir(fld))}_{os.path.basename(ds)}_{int(100*scale)}_{os.path.basename(yolo_sr).split('.')[0] if yolo_sr is not None else ''}_{os.path.basename(ss_sr).split('.')[0] if ss_sr is not None else ''}")
@@ -3891,7 +3908,7 @@ if __name__ == "__main__":
                   "yolo_sr": yolo_sr,
                   "ss_sr": ss_sr,
                   'sample_sr_scale': 1,
-                  'ss_sr_scale':1
+                  'ss_sr_scale':scale
                   }
         evaluate_dataset_xy_allargs(**params)
 

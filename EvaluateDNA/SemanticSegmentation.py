@@ -869,7 +869,7 @@ def evaluate_real(model, device, folder, folder_pt, folder_results, label_folder
         os.makedirs(save_pret, exist_ok=True)
 
     if len(os.listdir(folder)) != len(os.listdir(folder_pt)):
-
+        print("PP")
         for fn in tqdm(os.listdir(folder), desc="Pretransform Real"):
             fn_prev = os.path.join(folder, fn)
             fn_after = os.path.join(folder_pt, fn[:-3] + "npy")
@@ -877,7 +877,7 @@ def evaluate_real(model, device, folder, folder_pt, folder_results, label_folder
             Preprocessing.pretransform_image(fn_prev, fn_after, IMAGE_SIZE, line_corr=line_corr, do_flatten=do_flatten,
                                              do_flatten_border=do_flatten_border,
                                              enhance_contrast=enhance_contrast, flip=flip, show=False,
-                                             flatten_line_90=flatten_line_90, skip_all=False)
+                                             flatten_line_90=flatten_line_90, skip_all=skip_pp)
             if save_pret is not None:
                 prett = np.load(fn_after, allow_pickle=True)
                 # plt.imshow(prett)
@@ -920,6 +920,12 @@ def evaluate_real(model, device, folder, folder_pt, folder_results, label_folder
 
     for batch in tqdm(test_loader, desc="Semantic Segmentation Real files", unit="batch"):
         images = batch['image']
+        # plt.switch_backend('tkagg')
+        # temp = copy.deepcopy(images)
+        # temp = temp.detach().cpu().numpy()
+        # temp = temp[0, 0, ...]
+        # plt.imshow(temp)
+        # plt.show()
 
 
         if compare_labels:

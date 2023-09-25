@@ -63,7 +63,7 @@ def denoise_set(infld, outfld, fraction=1.0, do_preprocess=True, model=r'D:\Date
         shutil.copytree(infld, png_pairs, dirs_exist_ok=True)
     elif list(os.listdir(infld))[0].split('.')[-1] == 'npy':
         for elem in os.listdir(infld):
-            plt.imsave(os.path.join(png_pairs, elem.split('.')[0] + ".png"), np.load(os.path.join(infld, elem), allow_pickle=True))
+            plt.imsave(os.path.join(png_pairs, elem.split('.')[0] + ".png"), np.load(os.path.join(infld, elem), allow_pickle=True), cmap='gray')
     else:
         raise Exception("Unknown Filetype " + list(os.listdir(infld))[0].split('.')[-1])
 
@@ -88,12 +88,17 @@ def denoise_set(infld, outfld, fraction=1.0, do_preprocess=True, model=r'D:\Date
         shutil.move(os.path.join(png_den, dnnames[i]), os.path.join(png_den, names[i]))
 
     for file in os.listdir(png_den):
-        di = np.array(Image.open((os.path.join(png_den, file))))#[:, :, 0]
-        ri = np.array(Image.open((os.path.join(png_ini, file))))[:, :, 0]
+        di = np.array(Image.open((os.path.join(png_den, file)))).astype(float)#[:, :, 0]
+        ri = np.array(Image.open((os.path.join(png_ini, file)))).astype(float)[:, :, 0]
 
         mix = di * (scale) + ri * (1-scale)
         plt.imsave(os.path.join(png_mix, file), mix, vmin=0, vmax=255, cmap='gray')
-        np.save(os.path.join(npy_mix, file), mix, allow_pickle=True)
+        np.save(os.path.join(npy_mix, file.split('.')[0] + '.npy'), mix, allow_pickle=True)
+
+        arr = np.load(os.path.join(npy_mix, file.split('.')[0] + '.npy'), allow_pickle=True)
+        plt.imshow(arr)
+        plt.show()
+
         if save_sxm:
             rng = []
             try:

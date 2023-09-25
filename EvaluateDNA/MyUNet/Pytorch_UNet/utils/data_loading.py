@@ -54,7 +54,7 @@ class BasicDataset(Dataset):
                 img_ndarray = img_ndarray.transpose((2, 0, 1))
             if not np.amax(img_ndarray) <= 1:
                 img_ndarray = np.nan_to_num(img_ndarray)
-                img_ndarray[img_ndarray > 1] = 0
+                img_ndarray /= np.amax(img_ndarray)
                 # plt.imshow(img_ndarray)
                 # plt.show()
 
