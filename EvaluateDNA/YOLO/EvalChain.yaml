@@ -1,0 +1,6 @@
+path:   ..\datasets\RealData
+train: images
+val: images
+test:  images
+names:
+	0: origami
