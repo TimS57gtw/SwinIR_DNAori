@@ -17,7 +17,7 @@
   "datasets": {
     "train": {
       "name": "train_dataset"           // just name
-      , "dataset_type": "sr"         // "dncnn" | "dnpatch" | "fdncnn" | "ffdnet" | "sr" | "srmd" | "dpsr" | "plain" | "plainpatch" | "jpeg"
+      , "dataset_type": "stack"         // "dncnn" | "dnpatch" | "fdncnn" | "ffdnet" | "sr" | "srmd" | "dpsr" | "plain" | "plainpatch" | "jpeg"
       , "dataroot_H": "C:/Users/seifert/PycharmProjects/SwinIR/TrainData/NoiseData/LR_NB"  // path of H training dataset. DIV2K (800 training images)
       , "dataroot_L": "C:/Users/seifert/PycharmProjects/SwinIR/TrainData/NoiseData/LR"              // path of L training dataset
 
@@ -29,7 +29,7 @@
     }
     , "test": {
       "name": "test_dataset",
-      "dataset_type": "sr",
+      "dataset_type": "stack",
       "dataroot_H": "C:/Users/seifert/PycharmProjects/SwinIR/TrainData/NoiseData/LR_NB_Test",  // path of H testing dataset
       "dataroot_L": "C:/Users/seifert/PycharmProjects/SwinIR/TrainData/NoiseData/LR_Test"              // path of L testing dataset
 
