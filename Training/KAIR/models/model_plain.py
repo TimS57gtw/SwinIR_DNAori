@@ -1,5 +1,7 @@
 import os.path
 from collections import OrderedDict
+
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.optim import lr_scheduler
@@ -170,6 +172,8 @@ class ModelPlain(ModelBase):
     # ----------------------------------------
     def netG_forward(self):
         self.E = self.netG(self.L)
+        self.E = self.E[:, 0, :, :]
+        self.E = self.E[:, None, :, :]
 
     # ----------------------------------------
     # update parameters and get loss
@@ -178,6 +182,10 @@ class ModelPlain(ModelBase):
         self.G_optimizer.zero_grad()
         self.netG_forward()
 
+
+        # print("LossFN: ")
+        # print(self.E)
+        # print(self.H)
         G_loss = self.G_lossfn_weight * self.G_lossfn(self.E, self.H)
         G_loss.backward()
 

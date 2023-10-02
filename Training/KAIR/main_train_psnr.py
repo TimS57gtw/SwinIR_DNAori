@@ -172,6 +172,7 @@ def main(json_path='options/train_msrresnet_psnr.json'):
     # Step--4 (main training)
     # ----------------------------------------
     '''
+    lastspeed = 0
 
     for epoch in range(1000000):  # keep running
         if opt['dist']:
@@ -181,10 +182,10 @@ def main(json_path='options/train_msrresnet_psnr.json'):
         for i, train_data in pbar:
 
             current_step += 1
-
             # -------------------------------
             # 1) update learning rate
             # -------------------------------
+            start = time.perf_counter()
             model.update_learning_rate(current_step)
 
             # -------------------------------
@@ -200,6 +201,7 @@ def main(json_path='options/train_msrresnet_psnr.json'):
             # -------------------------------
             # 4) training information
             # -------------------------------
+            # wandb.log({'speed': time.perf_counter() - start})
             if current_step % opt['train']['checkpoint_print'] == 0 and opt['rank'] == 0:
                 logs = model.current_log()  # such as loss
                 message = '<epoch:{:3d}, iter:{:8,d}, lr:{:.3e}, g-loss:{:.3e}> '.format(epoch, current_step, model.current_learning_rate(), logs['G_loss'])
@@ -210,6 +212,10 @@ def main(json_path='options/train_msrresnet_psnr.json'):
 
                 wandb.log({'G-Loss': logs['G_loss']})
                 wandb.log({'epoch': epoch})
+                wandb.log({'duration': (time.perf_counter() - start)})
+
+
+
 
             # -------------------------------
             # 5) save model
@@ -223,10 +229,13 @@ def main(json_path='options/train_msrresnet_psnr.json'):
             # -------------------------------
             # 6) testing
             # -------------------------------
-            if current_step % opt['train']['checkpoint_test'] == 0 and opt['rank'] == 0:
+            if True and current_step % opt['train']['checkpoint_test'] == 0 and opt['rank'] == 0:
+            # if True and current_step % 250 == 0:
 
                 avg_psnr = 0.0
                 idx = 0
+                avg_ssim = 0.0
+                avg_mse = 0.0
 
                 stat_fld = os.path.join(os.path.dirname(opt['path']['images']), 'stats')
                 os.makedirs(stat_fld, exist_ok=True)
@@ -244,6 +253,7 @@ def main(json_path='options/train_msrresnet_psnr.json'):
 
                         img_dir = os.path.join(opt['path']['images'], img_name)
                         util.mkdir(img_dir)
+                        # print("ImgDir: ", img_dir)
 
                         model.feed_data(test_data)
                         model.test()
@@ -251,8 +261,9 @@ def main(json_path='options/train_msrresnet_psnr.json'):
                         visuals = model.current_visuals()
                         E_img = util.tensor2uint(visuals['E'])
                         H_img = util.tensor2uint(visuals['H'])
-
                         L_img = util.tensor2uint(visuals['L'])
+                        E_img = E_img
+                        L_img = L_img[:, :, 0]
 
 
                         E_fl = copy.deepcopy(E_img)
@@ -291,125 +302,135 @@ def main(json_path='options/train_msrresnet_psnr.json'):
 
 
 
+
+
                         logger.info('{:->4d}--> {:>10s} | {:<4.2f}dB'.format(idx, image_name_ext, current_psnr))
 
-                        plt.clf()
-                        plt.imshow(diff, cmap='seismic')
-                        plt.colorbar()
-                        plt.title(f"PSNR: {current_psnr:.3f}dB")
-                        plt.savefig(os.path.join(res_fld, '{:s}_{:d}.png'.format(img_name, current_step)))
-                        plt.clf()
+
+                        if False and current_step % 500 * opt['train']['checkpoint_test'] == 0:
+                            plt.close()
+                            plt.cla()
+                            plt.clf()
+                            plt.imshow(diff, cmap='seismic')
+                            plt.colorbar()
+                            plt.title(f"PSNR: {current_psnr:.3f}dB")
+                            plt.savefig(os.path.join(res_fld, '{:s}_{:d}.png'.format(img_name, current_step)))
+                            plt.clf()
 
 
 
 
-                        # fig, axs = plt.subplots(2, 2)
-    #
-                        # axs[0, 0].imshow(L_fl, cmap='gray', vmax=255, vmin=0)
-                        # axs[0, 0].set_title("L")
-                        # axs[0, 0].axis('off')
-                        # axs[0, 1].imshow(E_fl, cmap='gray', vmax=255, vmin=0)
-                        # axs[0, 1].set_title("E")
-                        # axs[0, 1].axis('off')
-                        # axs[1, 0].imshow(H_fl, cmap='gray', vmax=255, vmin=0)
-                        # axs[1, 0].set_title("H")
-                        # axs[1, 0].axis('off')
-                        # axs[1, 1].imshow(diff, cmap='seismic')
-                        # axs[1, 1].set_title("diff")
-                        # axs[1, 1].axis('off')
-                        # plt.title(f"PSNR: {current_psnr:.3f}dB")
-                        # plt.savefig(os.path.join(comp_fld, '{:s}_{:d}.png'.format(img_name, current_step)))
-                        # plt.clf()
-                        mind = 0
-                        maxd = 0
-                        for i in range(3):
-                            if i == 0:
-                                ls = L_fl
-                            elif i == 1:
-                                ls = E_fl
-                            else:
-                                ls = H_fl
-
-                            for j in range(3):
-                                if j == 0:
-                                    rs = L_fl
-                                elif j == 1:
-                                    rs = E_fl
-                                else:
-                                    rs = H_fl
-
-                            diff = rs - ls
-                            if np.amin(diff) < mind:
-                                mind = np.amin(diff)
-                            if np.amax(diff) > maxd:
-                                maxd = np.amax(diff)
-
-                            mind = min(mind, -maxd)
-                            maxd = -mind
-
-
-                        fig, axs = plt.subplots(3, 3)
-
-                        for i in range(3):
-                            if i == 0:
-                                ls = L_fl
-                            elif i == 1:
-                                ls = E_fl
-                            else:
-                                ls = H_fl
-
-                            for j in [2, 1, 0]:
-                                if j == 0:
-                                    rs = L_fl
-                                elif j == 1:
-                                    rs = E_fl
-                                else:
-                                    rs = H_fl
-
-
-
-                                if i == j:
-                                    axs[i, j].imshow(ls, cmap='gray', vmin=0, vmax=255)
-
-                                else:
-                                    diff = ls - rs
-                                    pcm = axs[i, j].imshow(diff, cmap='seismic', vmin=mind, vmax=maxd)
-                                    # if i == 1 and j == 2:
-                                    #     fig.colorbar(pcm, ax=axs[i, j], shrink=3.0)
-                                    # if j == 2 and i != 1:
-                                    #     fig.colorbar(pcm, ax=axs[i, j], shrink=0.01)
-
-
-                                axs[i, j].axis('off')
+                            # fig, axs = plt.subplots(2, 2)
+        #
+                            # axs[0, 0].imshow(L_fl, cmap='gray', vmax=255, vmin=0)
+                            # axs[0, 0].set_title("L")
+                            # axs[0, 0].axis('off')
+                            # axs[0, 1].imshow(E_fl, cmap='gray', vmax=255, vmin=0)
+                            # axs[0, 1].set_title("E")
+                            # axs[0, 1].axis('off')
+                            # axs[1, 0].imshow(H_fl, cmap='gray', vmax=255, vmin=0)
+                            # axs[1, 0].set_title("H")
+                            # axs[1, 0].axis('off')
+                            # axs[1, 1].imshow(diff, cmap='seismic')
+                            # axs[1, 1].set_title("diff")
+                            # axs[1, 1].axis('off')
+                            # plt.title(f"PSNR: {current_psnr:.3f}dB")
+                            # plt.savefig(os.path.join(comp_fld, '{:s}_{:d}.png'.format(img_name, current_step)))
+                            # plt.clf()
+                            mind = 0
+                            maxd = 0
+                            for i in range(3):
                                 if i == 0:
+                                    ls = L_fl
+                                elif i == 1:
+                                    ls = E_fl
+                                else:
+                                    ls = H_fl
+
+                                for j in range(3):
                                     if j == 0:
-                                        axs[i, j].set_title("L")
+                                        rs = L_fl
                                     elif j == 1:
-                                        axs[i, j].set_title("E")
+                                        rs = E_fl
                                     else:
-                                        axs[i, j].set_title("H")
+                                        rs = H_fl
 
-                                if j == 0:
+                                diff = rs - ls
+                                if np.amin(diff) < mind:
+                                    mind = np.amin(diff)
+                                if np.amax(diff) > maxd:
+                                    maxd = np.amax(diff)
+
+                                mind = min(mind, -maxd)
+                                maxd = -mind
+
+
+                            fig, axs = plt.subplots(3, 3)
+
+                            for i in range(3):
+                                if i == 0:
+                                    ls = L_fl
+                                elif i == 1:
+                                    ls = E_fl
+                                else:
+                                    ls = H_fl
+
+                                for j in [2, 1, 0]:
+                                    if j == 0:
+                                        rs = L_fl
+                                    elif j == 1:
+                                        rs = E_fl
+                                    else:
+                                        rs = H_fl
+
+
+
+                                    if i == j:
+                                        axs[i, j].imshow(ls, cmap='gray', vmin=0, vmax=255)
+
+                                    else:
+                                        diff = ls - rs
+                                        pcm = axs[i, j].imshow(diff, cmap='seismic', vmin=mind, vmax=maxd)
+                                        # if i == 1 and j == 2:
+                                        #     fig.colorbar(pcm, ax=axs[i, j], shrink=3.0)
+                                        # if j == 2 and i != 1:
+                                        #     fig.colorbar(pcm, ax=axs[i, j], shrink=0.01)
+
+
+                                    axs[i, j].axis('off')
                                     if i == 0:
-                                        axs[i, j].set_xlabel("L")
-                                    elif i == 1:
-                                        axs[i, j].set_xlabel("E")
-                                    else:
-                                        axs[i, j].set_xlabel("H")
+                                        if j == 0:
+                                            axs[i, j].set_title("L")
+                                        elif j == 1:
+                                            axs[i, j].set_title("E")
+                                        else:
+                                            axs[i, j].set_title("H")
 
-                        # fig.colorbar(pcm, ax=[axs[0, 1], axs[0, 2], axs[1, 0], axs[2, 0], axs[2, 1], axs[1, 2]])
-                        # fig.colorbar(ax=axs)
-                        fig.colorbar(pcm, ax=axs.ravel().tolist())
-                        plt.suptitle(f"PSNR: {current_psnr:.3f}dB, MSE: {mse:.3f}, SSIM: {ssim:.3f}")
-                        plt.savefig(os.path.join(comp_fld, '{:s}_{:d}.png'.format(img_name, current_step)))
-                        plt.clf()
+                                    if j == 0:
+                                        if i == 0:
+                                            axs[i, j].set_xlabel("L")
+                                        elif i == 1:
+                                            axs[i, j].set_xlabel("E")
+                                        else:
+                                            axs[i, j].set_xlabel("H")
+
+                            # fig.colorbar(pcm, ax=[axs[0, 1], axs[0, 2], axs[1, 0], axs[2, 0], axs[2, 1], axs[1, 2]])
+                            # fig.colorbar(ax=axs)
+                            fig.colorbar(pcm, ax=axs.ravel().tolist())
+                            plt.suptitle(f"PSNR: {current_psnr:.3f}dB, MSE: {mse:.3f}, SSIM: {ssim:.3f}")
+                            plt.savefig(os.path.join(comp_fld, '{:s}_{:d}.png'.format(img_name, current_step)))
+                            plt.clf()
                         avg_psnr += current_psnr
+                        avg_ssim += ssim
+                        avg_mse += mse
 
 
                 combine_stats(stat_fld)
                 avg_psnr = avg_psnr / idx
-
-                wandb.log({'V-E-Img': E_img, 'V-H-Img': H_img, 'PSNR': avg_psnr})
+                avg_ssim = avg_ssim / idx
+                avg_mse = avg_mse  / idx
+                wandb.log({'V-E-Img': E_img, 'V-H-Img': H_img, 'T-PSNR': avg_psnr, 'T-SSIM': avg_ssim, 'T-MSE': avg_mse})
+                print({'V-E-Img': E_img, 'V-H-Img': H_img, 'T-PSNR': avg_psnr, 'T-SSIM': avg_ssim, 'T-MSE': avg_mse})
 
                 # testing log
                 logger.info('<epoch:{:3d}, iter:{:8,d}, Average PSNR : {:<.2f}dB\n'.format(epoch, current_step, avg_psnr))
@@ -434,10 +455,13 @@ def combine_stats(fld):
                 psnr += float(parts[1])
                 ssim += float(parts[2])
                 mse += float(parts[3])
-            psnr /= num
-            ssim /= num
-            mse /= num
-            d[step] = (psnr, ssim, mse)
+            if num != 0:
+                psnr /= num
+                ssim /= num
+                mse /= num
+                d[step] = (psnr, ssim, mse)
+            else:
+                d[step] = (0, 0, 0)
 
     steps = []
     psnrs = []

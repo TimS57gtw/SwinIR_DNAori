@@ -1,12 +1,21 @@
+import os.path
 import random
 
 import matplotlib.pyplot as plt
 import numpy as np
 import torch.utils.data as data
 import utils.utils_image as util
+import pandas as pd
+
+def load_spectra(file, nvals):
+    df = pd.read_csv(file)
+    ampl = np.array(df['A'])
+    ampl /= np.amax(ampl)
+    assert ampl.shape[0] == nvals
+    return ampl
 
 
-class DatasetSR(data.Dataset):
+class DatasetSTACK(data.Dataset):
     '''
     # -----------------------------------------
     # Get L/H for SISR.
@@ -17,7 +26,7 @@ class DatasetSR(data.Dataset):
     '''
 
     def __init__(self, opt):
-        super(DatasetSR, self).__init__()
+        super(DatasetSTACK, self).__init__()
         self.opt = opt
         self.n_channels = opt['n_channels'] if opt['n_channels'] else 3
         self.sf = opt['scale'] if opt['scale'] else 4
@@ -41,9 +50,18 @@ class DatasetSR(data.Dataset):
         # get H image
         # ------------------------------------
         H_path = self.paths_H[index]
-        img_H = util.imread_uint(H_path, self.n_channels)
-        plt.imshow(img_H)
-        plt.show()
+        img_H = util.imread_uint(H_path, 1)
+        # print(H_path)
+        dn = os.path.dirname(H_path)
+        dn2 = os.path.dirname(dn)
+
+        spec_path = os.path.join(dn2, "Spectra", os.path.basename(H_path).split('.')[0] + '.csv')
+        # print(spec_path)
+        # assert os.path.isfile(spec_path)
+        # plt.imshow(img_H)
+        # plt.show()
+        vec = load_spectra(spec_path, self.n_channels - 1)
+
         img_H = util.uint2single(img_H)
 
         # ------------------------------------
@@ -59,7 +77,7 @@ class DatasetSR(data.Dataset):
             # directly load L image
             # --------------------------------
             L_path = self.paths_L[index]
-            img_L = util.imread_uint(L_path, self.n_channels)
+            img_L = util.imread_uint(L_path, 1)
             img_L = util.uint2single(img_L)
 
         else:
@@ -69,6 +87,15 @@ class DatasetSR(data.Dataset):
             H, W = img_H.shape[:2]
             img_L = util.imresize_np(img_H, 1 / self.sf, True)
 
+        # Stack LR-Image with Map
+        # print(img_L.shape)
+
+
+        newL = np.zeros((img_L.shape[0], img_L.shape[1], self.n_channels))
+        newL[:, :, 0] = img_L[:, :, 0]
+        newL[:, :, 1:] = vec
+
+        img_L = newL
         # ------------------------------------
         # if train, get L/H patch pair
         # ------------------------------------
