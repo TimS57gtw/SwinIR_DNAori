@@ -1,4 +1,5 @@
 import os.path
+import time
 from collections import OrderedDict
 
 import numpy as np
@@ -56,11 +57,13 @@ class ModelPlain(ModelBase):
         if load_path_G is not None:
             print('Loading model for G [{:s}] ...'.format(load_path_G))
             self.load_network(load_path_G, self.netG, strict=self.opt_train['G_param_strict'], param_key='params')
+            # print("Loading G: ", load_path_G)
         load_path_E = self.opt['path']['pretrained_netE']
         if self.opt_train['E_decay'] > 0:
             if load_path_E is not None:
                 print('Loading model for E [{:s}] ...'.format(load_path_E))
                 self.load_network(load_path_E, self.netE, strict=self.opt_train['E_param_strict'], param_key='params_ema')
+                # print("Loading E: ", load_path_E)
             else:
                 print('Copying model for E ...')
                 self.update_E(0)
@@ -74,6 +77,7 @@ class ModelPlain(ModelBase):
         if load_path_optimizerG is not None and self.opt_train['G_optimizer_reuse']:
             print('Loading optimizerG [{:s}] ...'.format(load_path_optimizerG))
             self.load_optimizer(load_path_optimizerG, self.G_optimizer)
+            # print("Loading O: ", load_path_optimizerG)
 
     # ----------------------------------------
     # save model / optimizer(optional)
@@ -164,6 +168,7 @@ class ModelPlain(ModelBase):
     # ----------------------------------------
     def feed_data(self, data, need_H=True):
         self.L = data['L'].to(self.device)
+
         if need_H:
             self.H = data['H'].to(self.device)
 

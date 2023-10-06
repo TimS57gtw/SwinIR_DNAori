@@ -23,7 +23,7 @@ os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 '''
 
 
-IMG_EXTENSIONS = ['.jpg', '.JPG', '.jpeg', '.JPEG', '.png', '.PNG', '.ppm', '.PPM', '.bmp', '.BMP', '.tif']
+IMG_EXTENSIONS = ['.jpg', '.JPG', '.jpeg', '.JPEG', '.png', '.PNG', '.ppm', '.PPM', '.bmp', '.BMP', '.tif', '.npy']
 
 
 def is_image_file(filename):
@@ -186,11 +186,19 @@ def mkdir_and_rename(path):
 # --------------------------------------------
 # get uint8 image of size HxWxn_channles (RGB)
 # --------------------------------------------
-def imread_uint(path, n_channels=3):
+def imread_uint(path, n_channels=3, is_npy=False):
     #  input: path
     # output: HxWx3(RGB or GGG), or HxWx1 (G)
+
+    if is_npy:
+        assert n_channels == 1
+        arr = np.load(path, allow_pickle=True).T
+        arr = np.expand_dims(arr, axis=2)
+        return arr
+
     if n_channels == 1:
         img = cv2.imread(path, 0)  # cv2.IMREAD_GRAYSCALE
+
         img = np.expand_dims(img, axis=2)  # HxWx1
     elif n_channels == 3:
         img = cv2.imread(path, cv2.IMREAD_UNCHANGED)  # BGR or G

@@ -225,7 +225,8 @@ def main(json_path='options/train_msrresnet_psnr.json'):
                 model.save(current_step)
 
             if i == 0:
-                model.plot(epoch)
+                if epoch % 10 == 0:
+                    model.plot(epoch)
             # -------------------------------
             # 6) testing
             # -------------------------------
@@ -493,6 +494,7 @@ def combine_stats(fld):
 
 if __name__ == '__main__':
     json_path = "options/swinir/train_swinir_sr_classical.json"
+    # json_path = "options/train_dncnn.json"
     # json_path = "options/swinir/train_swinir_denoising_gray.json"
 
     main(json_path)

@@ -39,6 +39,9 @@ class DatasetSTACK(data.Dataset):
         self.paths_H = util.get_image_paths(opt['dataroot_H'])
         self.paths_L = util.get_image_paths(opt['dataroot_L'])
 
+        self.is_numpy =  self.paths_H[0].split('.')[-1] == 'npy'
+
+
         assert self.paths_H, 'Error: H path is empty.'
         if self.paths_L and self.paths_H:
             assert len(self.paths_L) == len(self.paths_H), 'L/H mismatch - {}, {}.'.format(len(self.paths_L), len(self.paths_H))
@@ -50,7 +53,10 @@ class DatasetSTACK(data.Dataset):
         # get H image
         # ------------------------------------
         H_path = self.paths_H[index]
-        img_H = util.imread_uint(H_path, 1)
+        img_H = util.imread_uint(H_path, 1, self.is_numpy)
+
+        # plt.imshow(img_H)
+        # plt.show()
         # print(H_path)
         dn = os.path.dirname(H_path)
         dn2 = os.path.dirname(dn)
@@ -60,14 +66,20 @@ class DatasetSTACK(data.Dataset):
         # assert os.path.isfile(spec_path)
         # plt.imshow(img_H)
         # plt.show()
+
         vec = load_spectra(spec_path, self.n_channels - 1)
 
-        img_H = util.uint2single(img_H)
+        # vec *= 0
+        if not self.is_numpy:
+            img_H = util.uint2single(img_H)
 
         # ------------------------------------
         # modcrop
         # ------------------------------------
         img_H = util.modcrop(img_H, self.sf)
+
+        # plt.imshow(img_H)
+        # plt.show()
 
         # ------------------------------------
         # get L image
@@ -77,8 +89,9 @@ class DatasetSTACK(data.Dataset):
             # directly load L image
             # --------------------------------
             L_path = self.paths_L[index]
-            img_L = util.imread_uint(L_path, 1)
-            img_L = util.uint2single(img_L)
+            img_L = util.imread_uint(L_path, 1, self.is_numpy)
+            if not self.is_numpy:
+                img_L = util.uint2single(img_L)
 
         else:
             # --------------------------------

@@ -62,6 +62,7 @@ class DatasetSR(data.Dataset):
             # --------------------------------
             # sythesize L image via matlab's bicubic
             # --------------------------------
+            print("Synthesizing L")
             H, W = img_H.shape[:2]
             img_L = util.imresize_np(img_H, 1 / self.sf, True)
 
