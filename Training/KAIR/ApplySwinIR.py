@@ -41,9 +41,9 @@ def estimate_folder(opt, model, infld, outfld, statdf, border, step, comp=True, 
 
     start = time.perf_counter()
     dataset_opt = opt['datasets']['test']
-    dataset_opt['dataroot_L'] = os.path.join(infld, 'Noise_LVL')
+    dataset_opt['dataroot_L'] = os.path.join(infld, 'NS_npy')
     if os.path.isdir(os.path.join(infld, 'GT')):
-        dataset_opt['dataroot_H'] = os.path.join(infld, 'GT')
+        dataset_opt['dataroot_H'] = os.path.join(infld, 'GT_npy')
     else:
         print("Setting H Data equal to L")
         dataset_opt['dataroot_H'] = dataset_opt['dataroot_L']
@@ -412,17 +412,17 @@ def initial_metrics(oufld):
 
 
 if __name__ == "__main__":
-    train_scenario = "RW_Test"
+    train_scenario = "ImagesV2"
     # modelfld = r'D:\Dateien\KI_Speicher\SwinSTM_Denoise\Runs\swinir_sr_classical_patch64_x1_N65'
     # modelfld = r'D:\Dateien\KI_Speicher\SwinSTM_Denoise\Runs\swinir_sr_classical_patch64_x1_N65_LVL_MM_NP_LargeHS'
-    modelfld = r'D:\Dateien\KI_Speicher\SwinSTM_Denoise\Runs\swinir_sr_CL_H128_W8_full'
+    modelfld = r'D:\Dateien\KI_Speicher\SwinSTM_Denoise\Runs\swinir_N65_npy_W8_H64_C3'
     # modelfld = r'D:\Dateien\KI_Speicher\SwinSTM_Denoise\Runs\swinir_sr_classical_patch64_x1_N65_LVL_MM_NP_LargeHS_WS16'
     modelfld = os.path.join(modelfld, 'models')
     outfld = os.path.join(r'D:\Dateien\KI_Speicher\SwinSTM_Denoise\Tests', train_scenario, os.path.basename(os.path.dirname(modelfld)))
     os.makedirs(outfld, exist_ok=True)
     json_path = find_json(os.path.join(os.path.dirname(modelfld), 'options'))
     # infld = r'C:\Users\seifert\PycharmProjects\SwinIR\TrainData\Graphite_V1\Test'
-    infld = r'C:\Users\seifert\PycharmProjects\SwinIR\TrainData\IMGS_Fnoise_MM\Test'
+    infld = r'C:\Users\seifert\PycharmProjects\SwinIR\TrainData\ImagesV2\Test'
     # infld = r'C:\Users\seifert\PycharmProjects\SwinIR\TrainData\Ph5\Test'
 
 

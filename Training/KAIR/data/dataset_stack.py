@@ -36,8 +36,8 @@ class DatasetSTACK(data.Dataset):
         # ------------------------------------
         # get paths of L/H
         # ------------------------------------
-        self.paths_H = util.get_image_paths(opt['dataroot_H'])
-        self.paths_L = util.get_image_paths(opt['dataroot_L'])
+        self.paths_H = util.get_image_paths(opt['dataroot_H'])[:200]
+        self.paths_L = util.get_image_paths(opt['dataroot_L'])[:200]
 
         self.is_numpy =  self.paths_H[0].split('.')[-1] == 'npy'
 
