@@ -10,7 +10,8 @@ import pandas as pd
 def load_spectra(file, nvals):
     df = pd.read_csv(file)
     ampl = np.array(df['A'])
-    ampl /= np.amax(ampl)
+    if np.amax(ampl) > 0:
+        ampl /= np.amax(ampl)
     assert ampl.shape[0] == nvals
     return ampl
 
@@ -36,8 +37,8 @@ class DatasetSTACK(data.Dataset):
         # ------------------------------------
         # get paths of L/H
         # ------------------------------------
-        self.paths_H = util.get_image_paths(opt['dataroot_H'])[:200]
-        self.paths_L = util.get_image_paths(opt['dataroot_L'])[:200]
+        self.paths_H = util.get_image_paths(opt['dataroot_H'])
+        self.paths_L = util.get_image_paths(opt['dataroot_L'])
 
         self.is_numpy =  self.paths_H[0].split('.')[-1] == 'npy'
 

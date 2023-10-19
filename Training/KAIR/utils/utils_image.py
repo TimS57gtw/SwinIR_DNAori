@@ -194,6 +194,9 @@ def imread_uint(path, n_channels=3, is_npy=False):
         assert n_channels == 1
         arr = np.load(path, allow_pickle=True).T
         arr = np.expand_dims(arr, axis=2)
+        if np.any(np.isnan(arr)):
+            print(path)
+            print(arr)
         return arr
 
     if n_channels == 1:
