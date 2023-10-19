@@ -201,7 +201,7 @@ def transform_spectrum(spec, linespeed):
         plt.plot(interp_freqs, interp_ampl)
         plt.show()
 
-    interp_ampl = np.random.random(interp_ampl.shape)
+    # interp_ampl = np.random.random(interp_ampl.shape)
 
     return (interp_freqs, interp_ampl)
 
@@ -499,10 +499,10 @@ def preprocess(arr):
 PLOT=False
 VERBOSE=True
 if __name__ == "__main__":
-    infld = r"D:\Dateien\KI_Speicher\SampleSXM\Test"
+    infld = r"D:\Dateien\KI_Speicher\SampleSXM\Peer"
     specra_fld = os.path.join(infld, 'spectra')
     modelfld = r"D:\Dateien\KI_Speicher\SwinSTM_Denoise\Runs\swinir_sr_CL_H128_W8_full"
-    outfld = os.path.join(infld, 'denoised_RandSpec')
+    outfld = os.path.join(infld, 'denoisedHR')
     out_ori_png = os.path.join(outfld, 'Original')
     out_ori_prp = os.path.join(outfld, 'Preproc')
     out_den_png = os.path.join(outfld, 'PNG')
@@ -537,7 +537,7 @@ if __name__ == "__main__":
             spec = load_closest_spectrum(specra_fld, date)
 
             spec = transform_spectrum(spec, linespeed)
-            arr = subsample_image(arr, ims_size=256)
+            # arr = subsample_image(arr, ims_size=256)
 
             if PLOT:
                 plt.imshow(arr)
