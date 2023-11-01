@@ -6,6 +6,7 @@ import numpy as np
 import torch.utils.data as data
 import utils.utils_image as util
 import pandas as pd
+from scipy.signal import find_peaks
 
 def load_spectra(file, nvals):
     df = pd.read_csv(file)
@@ -15,6 +16,22 @@ def load_spectra(file, nvals):
     assert ampl.shape[0] == nvals
     return ampl
 
+def load_spectra2(file, nvals):
+    df = pd.read_csv(file)
+    fs = np.array(df['f'])
+    ampl = np.array(df['A'])
+    peaks, properties = find_peaks(x=ampl, distance=2)
+    pps = [(idx, ampl[idx], fs[idx]) for idx in peaks]
+    pps = sorted(pps, key=lambda x: -x[1])
+    # ol = len(pps)
+    while len(pps) < nvals:
+        pps.append((0, max(fs), 0))
+   #  ml = len(pps)
+    pps = pps[:nvals]
+    # print(f"{ol} -> {ml} -> {len(pps)} -> \n{pps}\n")
+
+
+    return np.array([x[2] for x in pps]) / max(fs)
 
 class DatasetSTACK(data.Dataset):
     '''
@@ -42,7 +59,6 @@ class DatasetSTACK(data.Dataset):
 
         self.is_numpy =  self.paths_H[0].split('.')[-1] == 'npy'
 
-
         assert self.paths_H, 'Error: H path is empty.'
         if self.paths_L and self.paths_H:
             assert len(self.paths_L) == len(self.paths_H), 'L/H mismatch - {}, {}.'.format(len(self.paths_L), len(self.paths_H))
@@ -62,13 +78,13 @@ class DatasetSTACK(data.Dataset):
         dn = os.path.dirname(H_path)
         dn2 = os.path.dirname(dn)
 
-        spec_path = os.path.join(dn2, "Spectra", os.path.basename(H_path).split('.')[0] + '.csv')
+        spec_path = os.path.join(dn2, "Spectra_Full", os.path.basename(H_path).split('.')[0] + '.csv')
         # print(spec_path)
         # assert os.path.isfile(spec_path)
         # plt.imshow(img_H)
         # plt.show()
 
-        vec = load_spectra(spec_path, self.n_channels - 1)
+        vec = load_spectra2(spec_path, self.n_channels - 1)
 
         # vec *= 0
         if not self.is_numpy:
@@ -110,6 +126,11 @@ class DatasetSTACK(data.Dataset):
         newL[:, :, 1:] = vec
 
         img_L = newL
+        # if img_L.shape[2] != 65:
+        #     print(img_L.shape)
+        #     return self.__getitem__(random.randint(0, len(self.paths_H)))
+
+
         # ------------------------------------
         # if train, get L/H patch pair
         # ------------------------------------
@@ -141,8 +162,15 @@ class DatasetSTACK(data.Dataset):
         # ------------------------------------
         img_H, img_L = util.single2tensor3(img_H), util.single2tensor3(img_L)
 
+
         if L_path is None:
             L_path = H_path
+        # with open('stats_ds.csv', 'a') as f:
+        #     f.write(f"{self.paths_H[index]};{img_L.shape[0]};{img_L.shape[1]};{img_L.shape[2]};{img_H.shape[0]};{img_H.shape[1]};{img_H.shape[2]}\n")
+
+        # if img_L.shape[0] != 65 or img_L.shape[1] != 64 or img_L.shape[2] != 64 or img_H.shape[0] != 1 or img_H.shape[1] != 64 or img_H.shape[2] != 64:
+        #     print("Err", img_L.shape, img_H.shape, index)
+        #     return self.__getitem__(random.randint(0, len(self.paths_H)))
 
         return {'L': img_L, 'H': img_H, 'L_path': L_path, 'H_path': H_path}
 
